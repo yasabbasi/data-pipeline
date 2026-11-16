@@ -18,6 +18,7 @@ lint: ## Check style, types, SQL, Markdown, YAML and JSON
 	uv run ruff check .
 	uv run ruff format --check .
 	uv run mypy
+	$(SQLFLUFF) lint $(SQLFLUFF_CONFIG) --dialect duckdb sql/views
 	$(SQLFLUFF) lint $(SQLFLUFF_CONFIG) --dialect bigquery sql/profile
 	uv run pymarkdown scan --recurse --exclude .venv --exclude .worktrees .
 	uv run yamllint --strict -d '{extends: default, rules: $(YAML_RULES)}' .github metrics.yaml
@@ -29,4 +30,5 @@ test: ## Run the tests, which use synthetic fixtures and no network
 format: ## Fix style and formatting
 	uv run ruff format .
 	uv run ruff check --fix .
+	$(SQLFLUFF) fix $(SQLFLUFF_CONFIG) --dialect duckdb sql/views
 	$(SQLFLUFF) fix $(SQLFLUFF_CONFIG) --dialect bigquery sql/profile
