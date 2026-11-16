@@ -1,6 +1,8 @@
 .DEFAULT_GOAL := help
-.PHONY: help install check lint test format
+.PHONY: help install check lint test format demo run sample
 
+PIPELINE := uv run data-pipeline
+DEMO := --db data/demo/warehouse.duckdb --runs-dir data/demo/runs --output-dir data/demo/output
 SQLFLUFF := uv run sqlfluff
 SQLFLUFF_CONFIG := --ignore-local-config --config pyproject.toml
 YAML_RULES = {document-start: disable, line-length: disable, truthy: {check-keys: false}, \
@@ -32,3 +34,15 @@ format: ## Fix style and formatting
 	uv run ruff check --fix .
 	$(SQLFLUFF) fix $(SQLFLUFF_CONFIG) --dialect duckdb sql/views
 	$(SQLFLUFF) fix $(SQLFLUFF_CONFIG) --dialect bigquery sql/profile
+
+demo: ## Run the whole pipeline twice on synthetic fixtures, offline, into data/demo/
+	$(PIPELINE) run $(DEMO) --as-of 2026-01-21 --full-refresh
+	$(PIPELINE) run $(DEMO) --as-of 2026-01-31
+	$(PIPELINE) show --output-dir data/demo/output --days 10
+
+run: ## Run against live BigQuery into data/output/ (needs gcloud credentials)
+	$(PIPELINE) run --source bigquery --full-refresh
+	$(PIPELINE) show
+
+sample: ## Rebuild the committed sample outputs from the fixtures
+	uv run python -m data_pipeline.sample
