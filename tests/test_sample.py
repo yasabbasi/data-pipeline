@@ -134,11 +134,10 @@ def test_a_published_sample_still_matches_its_pinned_checksums(version: str) -> 
 @pytest.mark.parametrize("table", contract.TABLES)
 def test_sample_tables_have_the_contract_columns_and_types_in_order(table: str) -> None:
     with duckdb.connect() as con:
-        described = con.execute(
-            "describe select * from read_parquet(?)", [str(parquet_file(SAMPLE_DIR, table))]
-        ).fetchall()
+        sample = con.read_parquet(str(parquet_file(SAMPLE_DIR, table)))
+        actual = list(zip(sample.columns, map(str, sample.types), strict=True))
     expected = [(c, TYPE_ALIASES.get(t, t)) for c, t in contract.columns(table).items()]
-    assert [(row[0], row[1]) for row in described] == expected
+    assert actual == expected
 
 
 @pytest.mark.parametrize("table", contract.TABLES)
