@@ -19,13 +19,16 @@ flowchart LR
 
 | What | Number | How to check |
 |---|---|---|
+| Live run on 2026-11-16 | 2,858,962 rows read from six tables, 281 MB processed in BigQuery, 349 seconds | `make run` |
+| Quality checks on that run | 47 of 47 pass, 0 rows quarantined | `data/output/quality_report.json` |
+| Published by that run | 2,875 days, 2019-01-02 to 2026-11-15; 375,908 rows in `daily_metrics` | printed by `make run` |
 | Tests | 218, all offline on synthetic fixtures | `uv run pytest -q` |
 | Demo | Two runs that end with 3,321 source rows and 30 days of metrics, in about 1 second | `make demo` |
-| Quality checks in the sample report | 47, all pass: 34 row-level and 13 critical; 0 rows quarantined | `samples/v1/quality_report.json` |
 | Rows in `samples/v1` | 338 in `daily_metrics`, 30 in `daily_totals`, 9 in `metric_definitions`, 1 in `run_metadata` | printed by `make sample` |
 
-These numbers come from the synthetic fixtures. Live results will be added after the first
-live run of this repo.
+The live numbers are from one run. The source regenerates its data every day, so a run on
+another day reads different rows. The test, demo and sample numbers come from the synthetic
+fixtures and never change.
 
 ## Quickstart
 
