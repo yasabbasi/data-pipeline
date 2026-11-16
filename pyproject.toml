@@ -1,0 +1,83 @@
+[project]
+name = "data-pipeline"
+version = "1.0.0"
+description = "Import a source, check its quality, and publish daily metrics under a versioned contract."
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "yas", email = "355981534+yasabbasi@users.noreply.github.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "duckdb==2.0.0",
+    "google-cloud-bigquery==3.47.0",
+    "jsonschema==4.26.0",
+    "pyarrow==26.0.1",
+    "pydantic==2.14.3",
+    "pyyaml==6.0.3",
+]
+
+[project.scripts]
+data-pipeline = "data_pipeline.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.13.8,<0.14.0"]
+build-backend = "uv_build"
+
+# Settings task-agent reads. Agents may not change this file; gate enforces it.
+[tool.task-agent]
+agent_commands = ["make sample"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.mypy]
+strict = true
+files = ["src", "tests", "scripts"]
+
+[[tool.mypy.overrides]]
+module = ["pyarrow", "pyarrow.*"]
+ignore_missing_imports = true
+
+[tool.pymarkdown]
+plugins.line-length.enabled = false
+plugins.first-line-heading.enabled = false
+extensions.front-matter.enabled = true
+
+[dependency-groups]
+dev = [
+    "mypy==2.4.1",
+    "pymarkdownlnt==0.9.42",
+    "pytest==9.2.0",
+    "ruff==0.17.5",
+    "sqlfluff==4.5.0",
+    "types-jsonschema==4.26.0.20261006",
+    "types-pyyaml==6.0.12.20261113",
+    "yamllint==1.38.0",
+]
+
+[tool.sqlfluff.core]
+max_line_length = 100
+
+[tool.sqlfluff.rules.capitalisation.keywords]
+capitalisation_policy = "lower"
+
+[tool.sqlfluff.rules.capitalisation.identifiers]
+extended_capitalisation_policy = "lower"
+
+[tool.sqlfluff.rules.capitalisation.functions]
+extended_capitalisation_policy = "lower"
+
+[tool.sqlfluff.rules.capitalisation.literals]
+capitalisation_policy = "lower"
+
+[tool.sqlfluff.rules.capitalisation.types]
+extended_capitalisation_policy = "lower"

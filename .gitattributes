@@ -1,0 +1,3 @@
+# Contract checksums are computed over exact bytes; keep line endings stable on every OS.
+contract/** text eol=lf
+samples/** -text
