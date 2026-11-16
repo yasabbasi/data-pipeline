@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:data-pipeline:contract:v1:run_metadata",
+  "title": "run_metadata row",
+  "description": "Exactly one row describing the run that produced the published outputs.",
+  "x-grain": [],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run_id",
+    "contract_version",
+    "pipeline_version",
+    "source",
+    "generated_at",
+    "data_min_date",
+    "data_max_date",
+    "restated_from",
+    "quality_status"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "x-duckdb-type": "VARCHAR",
+      "description": "Unique id of the run; also in quality_report.json."
+    },
+    "contract_version": {
+      "const": "v1",
+      "x-duckdb-type": "VARCHAR",
+      "description": "Output contract version."
+    },
+    "pipeline_version": {
+      "type": "string",
+      "minLength": 1,
+      "x-duckdb-type": "VARCHAR",
+      "description": "data-pipeline package version."
+    },
+    "source": {
+      "enum": [
+        "bigquery",
+        "fixtures"
+      ],
+      "x-duckdb-type": "VARCHAR",
+      "description": "bigquery = live thelook data; fixtures = synthetic test data."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "x-duckdb-type": "TIMESTAMPTZ",
+      "description": "When the outputs were published (UTC)."
+    },
+    "data_min_date": {
+      "type": "string",
+      "format": "date",
+      "x-duckdb-type": "DATE",
+      "description": "First metric_date in the outputs."
+    },
+    "data_max_date": {
+      "type": "string",
+      "format": "date",
+      "x-duckdb-type": "DATE",
+      "description": "Last metric_date in the outputs."
+    },
+    "restated_from": {
+      "type": "string",
+      "format": "date",
+      "x-duckdb-type": "DATE",
+      "description": "Rows with metric_date on or after this date may change on later runs (late returns, status updates)."
+    },
+    "quality_status": {
+      "enum": [
+        "pass",
+        "warn"
+      ],
+      "x-duckdb-type": "VARCHAR",
+      "description": "Overall quality result; runs that fail critical checks never publish."
+    }
+  }
+}

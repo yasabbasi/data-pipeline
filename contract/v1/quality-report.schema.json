@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:data-pipeline:contract:v1:quality_report",
+  "title": "quality_report.json",
+  "description": "Data-quality results for one run. The published copy (next to the tables) is never 'fail'; a failing run writes its report under data/runs/<run_id>/ and publishes nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "run_id",
+    "generated_at",
+    "source",
+    "status",
+    "tables",
+    "checks"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "v1"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "enum": [
+        "bigquery",
+        "fixtures"
+      ]
+    },
+    "status": {
+      "enum": [
+        "pass",
+        "warn",
+        "fail"
+      ],
+      "description": "fail if any critical check failed; warn if any warning check failed."
+    },
+    "tables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "table",
+          "rows_ingested",
+          "rows_quarantined"
+        ],
+        "properties": {
+          "table": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rows_ingested": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rows_quarantined": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "table",
+          "check_type",
+          "severity",
+          "status",
+          "failed_rows",
+          "message"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique check name, e.g. order_items.id.unique."
+          },
+          "table": {
+            "type": "string",
+            "minLength": 1
+          },
+          "check_type": {
+            "type": "string",
+            "minLength": 1,
+            "description": "e.g. schema, not_null, unique, referential, freshness, chronology."
+          },
+          "severity": {
+            "enum": [
+              "critical",
+              "warning"
+            ]
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "fail"
+            ]
+          },
+          "failed_rows": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Rows that failed; failing rows are quarantined, never silently dropped. 0 for table-level checks."
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

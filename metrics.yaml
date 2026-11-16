@@ -1,0 +1,97 @@
+# Single source of truth for metric definitions (output contract v1).
+# Each metric becomes a column in daily_metrics and daily_totals and a row in metric_definitions.
+# Changing a name, meaning, or the set of metrics requires a new contract version.
+#
+# Sources (built in the metrics layer):
+#   sold_items     order_items that were not cancelled, with product category and distribution
+#                  center; dated by the order's created_at (UTC), i.e. when the order was placed.
+#                  The item's own created_at is not used: in the live source it often falls on a
+#                  different day than its order and can be in the future.
+#   product_views  'product' events whose uri is /product/<id>, joined to that product's category
+#                  and distribution center; `session_converted` is true when the same session has
+#                  a 'purchase' event. Dated by the event's created_at (UTC).
+#
+# agg: sum | count | count_distinct | ratio. Ratios are NULL when the denominator is 0.
+# additive: true when summing the metric across categories/distribution centers gives the total.
+
+metrics:
+  revenue:
+    label: Revenue
+    description: Sum of sale_price over items that were not cancelled.
+    unit: usd
+    agg: sum
+    source: sold_items
+    expr: sale_price
+    additive: true
+
+  orders:
+    label: Orders
+    description: Distinct orders with at least one non-cancelled item in the slice.
+    unit: count
+    agg: count_distinct
+    source: sold_items
+    expr: order_id
+    additive: false
+
+  units:
+    label: Units sold
+    description: Non-cancelled order items (one row in order_items is one unit).
+    unit: count
+    agg: count
+    source: sold_items
+    additive: true
+
+  returned_units:
+    label: Returned units
+    description: Units that have been returned so far, counted on the date the order was placed.
+    unit: count
+    agg: count
+    source: sold_items
+    filter: returned_at IS NOT NULL
+    additive: true
+
+  aov:
+    label: Average order value
+    description: Revenue divided by orders.
+    unit: usd
+    agg: ratio
+    numerator: revenue
+    denominator: orders
+    additive: false
+
+  return_rate:
+    label: Return rate
+    description: Returned units divided by units sold; recent days rise as returns arrive.
+    unit: ratio
+    agg: ratio
+    numerator: returned_units
+    denominator: units
+    additive: false
+
+  product_view_sessions:
+    label: Sessions with a product view
+    description: Distinct sessions that viewed at least one product in the slice.
+    unit: count
+    agg: count_distinct
+    source: product_views
+    expr: session_id
+    additive: false
+
+  converted_sessions:
+    label: Converted sessions
+    description: Product-view sessions in the slice that also contain a purchase event.
+    unit: count
+    agg: count_distinct
+    source: product_views
+    expr: session_id
+    filter: session_converted
+    additive: false
+
+  conversion_rate:
+    label: Conversion rate
+    description: Converted sessions divided by sessions with a product view (session-level approximation; purchase events carry no product id).
+    unit: ratio
+    agg: ratio
+    numerator: converted_sessions
+    denominator: product_view_sessions
+    additive: false
