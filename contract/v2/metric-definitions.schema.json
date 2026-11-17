@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:data-pipeline:contract:v2:metric_definitions",
+  "title": "metric_definitions row",
+  "description": "One row per metric column in daily_metrics and daily_totals, generated from metrics.yaml.",
+  "x-grain": [
+    "metric_name"
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "metric_name",
+    "label",
+    "description",
+    "unit",
+    "aggregation",
+    "formula",
+    "additive"
+  ],
+  "properties": {
+    "metric_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "x-duckdb-type": "VARCHAR",
+      "description": "Column name in daily_metrics and daily_totals."
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "x-duckdb-type": "VARCHAR",
+      "description": "Display name."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "x-duckdb-type": "VARCHAR",
+      "description": "Plain-language definition."
+    },
+    "unit": {
+      "enum": [
+        "usd",
+        "count",
+        "ratio"
+      ],
+      "x-duckdb-type": "VARCHAR",
+      "description": "usd, count, or ratio (0 to 1)."
+    },
+    "aggregation": {
+      "enum": [
+        "sum",
+        "count",
+        "count_distinct",
+        "ratio"
+      ],
+      "x-duckdb-type": "VARCHAR",
+      "description": "How the metric is computed."
+    },
+    "formula": {
+      "type": "string",
+      "minLength": 1,
+      "x-duckdb-type": "VARCHAR",
+      "description": "SQL-like definition, e.g. 'SUM(sale_price) FROM sold_items'."
+    },
+    "additive": {
+      "type": "boolean",
+      "x-duckdb-type": "BOOLEAN",
+      "description": "True if summing across categories/distribution centers gives the total."
+    }
+  }
+}

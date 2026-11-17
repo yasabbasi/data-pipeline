@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:data-pipeline:contract:v2:daily_metrics",
+  "title": "daily_metrics row",
+  "description": "Daily metrics by product category and distribution center. Sparse: a row exists only if the slice had sales or product views that day. Do not sum non-additive columns across rows; use daily_totals.",
+  "x-grain": [
+    "metric_date",
+    "category",
+    "distribution_center_id"
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "metric_date",
+    "category",
+    "distribution_center_id",
+    "distribution_center_name",
+    "revenue",
+    "orders",
+    "units",
+    "returned_units",
+    "aov",
+    "return_rate",
+    "product_view_sessions",
+    "converted_sessions",
+    "conversion_rate"
+  ],
+  "properties": {
+    "metric_date": {
+      "type": "string",
+      "format": "date",
+      "x-duckdb-type": "DATE",
+      "description": "UTC calendar date."
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1,
+      "x-duckdb-type": "VARCHAR",
+      "description": "Product category."
+    },
+    "distribution_center_id": {
+      "type": "integer",
+      "x-duckdb-type": "BIGINT",
+      "description": "Distribution center that stocks the product."
+    },
+    "distribution_center_name": {
+      "type": "string",
+      "minLength": 1,
+      "x-duckdb-type": "VARCHAR",
+      "description": "Distribution center name."
+    },
+    "revenue": {
+      "type": "number",
+      "minimum": 0,
+      "x-duckdb-type": "DOUBLE",
+      "description": "USD, rounded to cents. Additive."
+    },
+    "orders": {
+      "type": "integer",
+      "minimum": 0,
+      "x-duckdb-type": "BIGINT",
+      "description": "Distinct orders. Not additive across slices."
+    },
+    "units": {
+      "type": "integer",
+      "minimum": 0,
+      "x-duckdb-type": "BIGINT",
+      "description": "Units sold. Additive."
+    },
+    "returned_units": {
+      "type": "integer",
+      "minimum": 0,
+      "x-duckdb-type": "BIGINT",
+      "description": "Units returned so far. Additive."
+    },
+    "aov": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "x-duckdb-type": "DOUBLE",
+      "description": "revenue / orders; null when orders = 0."
+    },
+    "return_rate": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1,
+      "x-duckdb-type": "DOUBLE",
+      "description": "returned_units / units; null when units = 0."
+    },
+    "product_view_sessions": {
+      "type": "integer",
+      "minimum": 0,
+      "x-duckdb-type": "BIGINT",
+      "description": "Sessions that viewed a product in the slice. Not additive across slices."
+    },
+    "converted_sessions": {
+      "type": "integer",
+      "minimum": 0,
+      "x-duckdb-type": "BIGINT",
+      "description": "Of those sessions, ones with a purchase. Not additive across slices."
+    },
+    "conversion_rate": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1,
+      "x-duckdb-type": "DOUBLE",
+      "description": "converted_sessions / product_view_sessions; null when the denominator is 0."
+    }
+  }
+}

@@ -10,6 +10,16 @@ from data_pipeline.metrics_spec import load_metrics
 from data_pipeline.paths import PROJECT_ROOT
 
 SCHEMAS = (*contract.TABLES, contract.QUALITY_REPORT)
+V2_NEW_TABLES = ("daily_by_category", "daily_by_distribution_center")
+TABLES_BY_VERSION = {"v1": contract.TABLES, "v2": (*contract.TABLES, *V2_NEW_TABLES)}
+VERSIONED_SCHEMAS = [
+    (version, name)
+    for version, tables in TABLES_BY_VERSION.items()
+    for name in (*tables, contract.QUALITY_REPORT)
+]
+VERSIONED_TABLES = [
+    (version, table) for version, tables in TABLES_BY_VERSION.items() for table in tables
+]
 DIMENSIONS = {
     "daily_metrics": [
         "metric_date",
@@ -18,6 +28,18 @@ DIMENSIONS = {
         "distribution_center_name",
     ],
     "daily_totals": ["metric_date"],
+}
+V2_DIMENSIONS = DIMENSIONS | {
+    "daily_by_category": ["metric_date", "category"],
+    "daily_by_distribution_center": [
+        "metric_date",
+        "distribution_center_id",
+        "distribution_center_name",
+    ],
+}
+V2_GRAINS = {
+    "daily_by_category": ["metric_date", "category"],
+    "daily_by_distribution_center": ["metric_date", "distribution_center_id"],
 }
 
 
@@ -55,9 +77,50 @@ def run_metadata_row(**overrides: Any) -> dict[str, Any]:
     return row | overrides
 
 
+@pytest.mark.parametrize(("version", "name"), VERSIONED_SCHEMAS)
+def test_every_schema_file_is_valid_draft_2020_12(version: str, name: str) -> None:
+    Draft202012Validator.check_schema(contract.load_schema(name, version))
+
+
+def test_the_pipeline_still_publishes_v1() -> None:
+    assert contract.CONTRACT_VERSION == "v1"
+
+
 @pytest.mark.parametrize("name", SCHEMAS)
-def test_every_schema_file_is_valid_draft_2020_12(name: str) -> None:
-    Draft202012Validator.check_schema(contract.load_schema(name))
+def test_v2_keeps_each_v1_schema_with_only_the_version_changed(name: str) -> None:
+    v1 = json.dumps(contract.load_schema(name, "v1"))
+    expected = v1.replace(":contract:v1:", ":contract:v2:").replace(
+        '"const": "v1"', '"const": "v2"'
+    )
+    assert json.dumps(contract.load_schema(name, "v2")) == expected
+
+
+@pytest.mark.parametrize("table", V2_NEW_TABLES)
+def test_v2_slice_tables_have_their_grain(table: str) -> None:
+    assert contract.load_schema(table, "v2")["x-grain"] == V2_GRAINS[table]
+
+
+@pytest.mark.parametrize("table", V2_NEW_TABLES)
+def test_v2_slice_tables_type_metrics_as_daily_metrics(table: str) -> None:
+    daily = contract.load_schema("daily_metrics", "v2")["properties"]
+    properties = contract.load_schema(table, "v2")["properties"]
+    for metric in load_metrics():
+        for key in ("type", "minimum", "maximum", "x-duckdb-type"):
+            assert properties[metric].get(key) == daily[metric].get(key), f"{metric}.{key}"
+
+
+@pytest.mark.parametrize("table", V2_NEW_TABLES)
+@pytest.mark.parametrize("metric", ["orders", "product_view_sessions", "converted_sessions"])
+def test_v2_distinct_counts_are_described_as_not_additive(table: str, metric: str) -> None:
+    description = contract.load_schema(table, "v2")["properties"][metric]["description"]
+    assert "Distinct" in description or "distinct" in description
+    assert "Not additive across" in description
+
+
+def test_v2_run_metadata_requires_contract_version_v2() -> None:
+    row = run_metadata_row(contract_version="v2")
+    assert contract.validate("run_metadata", [row], "v2") == []
+    assert contract.validate("run_metadata", [run_metadata_row()], "v2")
 
 
 def test_the_current_version_has_a_pinned_checksum() -> None:
@@ -79,29 +142,33 @@ def test_a_published_version_still_matches_its_pinned_checksum() -> None:
         )
 
 
-@pytest.mark.parametrize("table", contract.TABLES)
-def test_every_table_column_is_required(table: str) -> None:
-    schema = contract.load_schema(table)
+@pytest.mark.parametrize(("version", "table"), VERSIONED_TABLES)
+def test_every_table_column_is_required(version: str, table: str) -> None:
+    schema = contract.load_schema(table, version)
     assert set(schema["required"]) == set(schema["properties"])
 
 
-@pytest.mark.parametrize("table", contract.TABLES)
-def test_every_table_column_has_a_duckdb_type(table: str) -> None:
-    assert all(contract.columns(table).values())
+@pytest.mark.parametrize(("version", "table"), VERSIONED_TABLES)
+def test_every_table_column_has_a_duckdb_type(version: str, table: str) -> None:
+    assert all(contract.columns(table, version).values())
 
 
-@pytest.mark.parametrize("table", DIMENSIONS)
-def test_metric_columns_match_metrics_yaml(table: str) -> None:
-    metric_columns = [c for c in contract.columns(table) if c not in DIMENSIONS[table]]
+@pytest.mark.parametrize(
+    ("version", "table"),
+    [("v1", t) for t in DIMENSIONS] + [("v2", t) for t in V2_DIMENSIONS],
+)
+def test_metric_columns_match_metrics_yaml(version: str, table: str) -> None:
+    dimensions = V2_DIMENSIONS[table]
+    metric_columns = [c for c in contract.columns(table, version) if c not in dimensions]
     assert sorted(metric_columns) == sorted(load_metrics())
 
 
-def test_the_contract_doc_names_every_table_and_column() -> None:
+@pytest.mark.parametrize(("version", "table"), VERSIONED_TABLES)
+def test_the_contract_doc_names_every_table_and_column(version: str, table: str) -> None:
     doc = (PROJECT_ROOT / "docs" / "contract.md").read_text()
-    for table in contract.TABLES:
-        assert f"`{table}`" in doc
-        for column in contract.columns(table):
-            assert f"`{column}`" in doc, f"{table}.{column} missing from docs/contract.md"
+    assert f"`{table}`" in doc
+    for column in contract.columns(table, version):
+        assert f"`{column}`" in doc, f"{table}.{column} missing from docs/contract.md"
 
 
 def test_a_valid_row_has_no_violations() -> None:
