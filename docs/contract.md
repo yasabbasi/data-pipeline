@@ -154,6 +154,45 @@ this slice and purchased something". It doesn't mean they bought that product.
 that views products on both sides of midnight UTC counts on each of those days. About 11%
 of live sessions span two or more dates.
 
+## Contract v2
+
+[`contract/v2/`](../contract/v2/) keeps every v1 schema unchanged except the version (`$id`
+and `contract_version` = `v2`) and adds two tables. In v1, `orders`, the session counts and
+the ratios exist only per category × distribution center or in total: one order or session
+can span several slices, so they can't be summed up to a category or a distribution center.
+v2 computes every metric at each of those grains directly.
+
+The pipeline still publishes v1 (`CONTRACT_VERSION` is `v1`). Publishing v2 is the next
+task.
+
+Both new tables are sparse: a row exists only when the slice had sales or product views
+that day. `revenue`, `units` and `returned_units` are additive. `orders`,
+`product_view_sessions` and `converted_sessions` are distinct within the slice, and they
+and every ratio must not be summed across slices. For totals, read `daily_totals`.
+
+### `daily_by_category`
+
+Grain: one row per `metric_date` × `category`.
+
+| Column | Type | Null |
+|---|---|---|
+| `metric_date` | DATE | no |
+| `category` | VARCHAR | no |
+| `revenue`, `orders`, `units`, `returned_units`, `product_view_sessions`, `converted_sessions` | as in `daily_metrics` | no |
+| `aov`, `return_rate`, `conversion_rate` | DOUBLE | yes |
+
+### `daily_by_distribution_center`
+
+Grain: one row per `metric_date` × `distribution_center_id`.
+
+| Column | Type | Null |
+|---|---|---|
+| `metric_date` | DATE | no |
+| `distribution_center_id` | BIGINT | no |
+| `distribution_center_name` | VARCHAR | no |
+| `revenue`, `orders`, `units`, `returned_units`, `product_view_sessions`, `converted_sessions` | as in `daily_metrics` | no |
+| `aov`, `return_rate`, `conversion_rate` | DOUBLE | yes |
+
 ## Reading the outputs
 
 ```sql

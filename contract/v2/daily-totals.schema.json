@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:data-pipeline:contract:v2:daily_totals",
+  "title": "daily_totals row",
+  "description": "Daily metrics across all categories and distribution centers. Gap-free: one row for every date from run_metadata.data_min_date to data_max_date, with zeros on days without activity.",
+  "x-grain": [
+    "metric_date"
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "metric_date",
+    "revenue",
+    "orders",
+    "units",
+    "returned_units",
+    "aov",
+    "return_rate",
+    "product_view_sessions",
+    "converted_sessions",
+    "conversion_rate"
+  ],
+  "properties": {
+    "metric_date": {
+      "type": "string",
+      "format": "date",
+      "x-duckdb-type": "DATE",
+      "description": "UTC calendar date."
+    },
+    "revenue": {
+      "type": "number",
+      "minimum": 0,
+      "x-duckdb-type": "DOUBLE",
+      "description": "USD, rounded to cents."
+    },
+    "orders": {
+      "type": "integer",
+      "minimum": 0,
+      "x-duckdb-type": "BIGINT",
+      "description": "Distinct orders."
+    },
+    "units": {
+      "type": "integer",
+      "minimum": 0,
+      "x-duckdb-type": "BIGINT",
+      "description": "Units sold."
+    },
+    "returned_units": {
+      "type": "integer",
+      "minimum": 0,
+      "x-duckdb-type": "BIGINT",
+      "description": "Units returned so far."
+    },
+    "aov": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "x-duckdb-type": "DOUBLE",
+      "description": "revenue / orders; null when orders = 0."
+    },
+    "return_rate": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1,
+      "x-duckdb-type": "DOUBLE",
+      "description": "returned_units / units; null when units = 0."
+    },
+    "product_view_sessions": {
+      "type": "integer",
+      "minimum": 0,
+      "x-duckdb-type": "BIGINT",
+      "description": "Distinct sessions with a product view."
+    },
+    "converted_sessions": {
+      "type": "integer",
+      "minimum": 0,
+      "x-duckdb-type": "BIGINT",
+      "description": "Of those sessions, ones with a purchase."
+    },
+    "conversion_rate": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1,
+      "x-duckdb-type": "DOUBLE",
+      "description": "converted_sessions / product_view_sessions; null when the denominator is 0."
+    }
+  }
+}
