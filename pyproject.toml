@@ -1,6 +1,6 @@
 [project]
 name = "data-pipeline"
-version = "1.0.0"
+version = "2.0.0"
 description = "Import a source, check its quality, and publish daily metrics under a versioned contract."
 readme = "README.md"
 license = "MIT"
