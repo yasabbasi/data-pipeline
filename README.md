@@ -21,7 +21,7 @@ flowchart LR
 |---|---|---|
 | Live run on 2026-11-16 | 2,858,962 rows read from six tables, 281 MB processed in BigQuery, 349 seconds | `make run` |
 | Quality checks on that run | 47 of 47 pass, 0 rows quarantined | `data/output/quality_report.json` |
-| Published by that run (contract v1) | 2,875 days, 2019-01-02 to 2026-11-15; 375,908 rows in `daily_metrics` | printed by `make run` |
+| Published from that run (contract v2) | 2,875 days, 2019-01-02 to 2026-11-15; 375,908 rows in `daily_metrics`, 70,485 in `daily_by_category`, 28,750 in `daily_by_distribution_center` | printed by `make run` |
 | Tests | 284, all offline on synthetic fixtures | `uv run pytest -q` |
 | Demo | Two runs that end with 3,321 source rows and 30 days of metrics, in about 1 second | `make demo` |
 | Rows in `samples/v2` | 338 in `daily_metrics`, 30 in `daily_totals`, 120 in `daily_by_category`, 90 in `daily_by_distribution_center`, 9 in `metric_definitions`, 1 in `run_metadata` | printed by `make sample` |
