@@ -13,7 +13,7 @@ from data_pipeline.sources.thelook import fixtures
 
 SAMPLE_DIR = PROJECT_ROOT / "samples" / contract.CONTRACT_VERSION
 RUN_ID = f"sample-{contract.CONTRACT_VERSION}"
-PIPELINE_VERSION = "1.0.0"
+PIPELINE_VERSION = "2.0.0"
 # No DuckDB file: its storage format is tied to the DuckDB version.
 SAMPLE_FILES = [f"parquet/{t}.parquet" for t in contract.TABLES] + ["quality_report.json"]
 

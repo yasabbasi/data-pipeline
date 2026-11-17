@@ -108,7 +108,7 @@ def test_published_run_metadata_names_the_run(result: PublishResult, output: Pat
     assert (meta["source"], meta["quality_status"], meta["contract_version"]) == (
         "fixtures",
         "pass",
-        "v1",
+        "v2",
     )
 
 

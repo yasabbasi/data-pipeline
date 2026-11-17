@@ -128,9 +128,11 @@ check stops the run. What the code adds:
   denominator is 0. Dollar values are rounded to cents.
 - **Complete UTC days only.** Rows dated on or after the date of the run's `as_of` are left
   out, so the current, partial day is never published. A run with no complete day fails.
-- **Two tables.** `daily_metrics` has a row only where a slice had activity. `daily_totals`
+- **Four tables.** `daily_metrics` has a row only where a slice had activity. `daily_totals`
   has every day from the first to the last, with zeros on days without activity. Its orders
-  and sessions are counted over the whole day, not summed from slices.
+  and sessions are counted over the whole day, not summed from slices. `daily_by_category`
+  and `daily_by_distribution_center` are sparse like `daily_metrics`, with orders and
+  sessions counted distinct within their category or distribution center.
 - **The inner joins drop nothing.** The views join items to orders, products and
   distribution centers with inner joins. The quality checks have already quarantined every
   row whose parent is missing or quarantined, so each clean row finds its parents.
@@ -147,9 +149,10 @@ check stops the run. What the code adds:
 2. **Build.** The metrics layer is rebuilt in the working database and `run_metadata` gets
    its one row. `restated_from` is the date of `as_of` minus 14 days.
 3. **Validate against the contract.** Column names and types must equal the schemas in
-   [`contract/v1/`](../contract/v1/). No table may have two rows for one grain value.
-   `daily_totals` must have no gaps. Rows are validated against the JSON Schemas: all of
-   them for the small tables, the first 1,000 for `daily_metrics`.
+   [`contract/v2/`](../contract/v2/), the version the pipeline publishes. No table may have
+   two rows for one grain value. `daily_totals` must have no gaps. Rows are validated
+   against the JSON Schemas: all of them for the small tables, the first 1,000 for
+   `daily_metrics`, `daily_by_category` and `daily_by_distribution_center`.
 4. **Write and replace.** `metrics.duckdb`, `parquet/<table>.parquet` and
    `quality_report.json` are written to a temporary directory next to the output directory.
    It is then renamed into place and the old set is deleted. Readers never see a

@@ -9,9 +9,10 @@ from data_pipeline import contract
 from data_pipeline.metrics_spec import load_metrics
 from data_pipeline.paths import PROJECT_ROOT
 
-SCHEMAS = (*contract.TABLES, contract.QUALITY_REPORT)
+V1_TABLES = ("daily_metrics", "daily_totals", "metric_definitions", "run_metadata")
+SCHEMAS = (*V1_TABLES, contract.QUALITY_REPORT)
 V2_NEW_TABLES = ("daily_by_category", "daily_by_distribution_center")
-TABLES_BY_VERSION = {"v1": contract.TABLES, "v2": (*contract.TABLES, *V2_NEW_TABLES)}
+TABLES_BY_VERSION = {"v1": V1_TABLES, "v2": (*V1_TABLES, *V2_NEW_TABLES)}
 VERSIONED_SCHEMAS = [
     (version, name)
     for version, tables in TABLES_BY_VERSION.items()
@@ -65,7 +66,7 @@ def daily_metrics_row(**overrides: Any) -> dict[str, Any]:
 def run_metadata_row(**overrides: Any) -> dict[str, Any]:
     row: dict[str, Any] = {
         "run_id": "r1",
-        "contract_version": "v1",
+        "contract_version": "v2",
         "pipeline_version": "0.1.0",
         "source": "fixtures",
         "generated_at": "2026-01-31T00:00:00Z",
@@ -82,8 +83,12 @@ def test_every_schema_file_is_valid_draft_2020_12(version: str, name: str) -> No
     Draft202012Validator.check_schema(contract.load_schema(name, version))
 
 
-def test_the_pipeline_still_publishes_v1() -> None:
-    assert contract.CONTRACT_VERSION == "v1"
+def test_the_pipeline_publishes_v2() -> None:
+    assert contract.CONTRACT_VERSION == "v2"
+
+
+def test_the_pipeline_publishes_every_v2_table() -> None:
+    assert TABLES_BY_VERSION["v2"] == contract.TABLES
 
 
 @pytest.mark.parametrize("name", SCHEMAS)
@@ -118,9 +123,8 @@ def test_v2_distinct_counts_are_described_as_not_additive(table: str, metric: st
 
 
 def test_v2_run_metadata_requires_contract_version_v2() -> None:
-    row = run_metadata_row(contract_version="v2")
-    assert contract.validate("run_metadata", [row], "v2") == []
-    assert contract.validate("run_metadata", [run_metadata_row()], "v2")
+    assert contract.validate("run_metadata", [run_metadata_row()], "v2") == []
+    assert contract.validate("run_metadata", [run_metadata_row(contract_version="v1")], "v2")
 
 
 def test_the_current_version_has_a_pinned_checksum() -> None:
@@ -229,4 +233,4 @@ def test_run_metadata_rejects_a_failed_quality_status() -> None:
 
 
 def test_run_metadata_rejects_another_contract_version() -> None:
-    assert contract.validate("run_metadata", [run_metadata_row(contract_version="v2")])
+    assert contract.validate("run_metadata", [run_metadata_row(contract_version="v1")])

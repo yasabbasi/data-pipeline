@@ -20,6 +20,7 @@ from data_pipeline.sources.thelook.views import load_views
 
 AS_OF = fixtures.AS_OF
 GAP = date(2026, 1, 15)
+SLICE_TABLES = ("daily_by_category", "daily_by_distribution_center")
 COUNTS = ("orders", "units", "returned_units", "product_view_sessions", "converted_sessions")
 
 
@@ -68,6 +69,48 @@ def expected_totals() -> dict[date, dict[str, float]]:
         }
         for day in set(sales) | set(views)
     }
+
+
+def expected_orders_by_category() -> dict[tuple[date, str], set[int]]:
+    source = fixtures.generate(as_of=AS_OF)
+    placed = {o["order_id"]: o["created_at"].date() for o in source["orders"]}
+    category = {p["id"]: p["category"] for p in source["products"]}
+    orders: defaultdict[tuple[date, str], set[int]] = defaultdict(set)
+    for item in source["order_items"]:
+        day = placed[item["order_id"]]
+        if item["created_at"] < AS_OF and item["status"] != "Cancelled" and day < AS_OF.date():
+            orders[(day, category[item["product_id"]])].add(item["order_id"])
+    return dict(orders)
+
+
+def slice_table_sums(con: duckdb.DuckDBPyConnection, table: str) -> list[dict[str, Any]]:
+    build(con, AS_OF.date())
+    found = con.execute(
+        f"""
+        with slice_sums as (
+            select
+                metric_date,
+                sum(revenue) as revenue,
+                sum(units) as units,
+                sum(returned_units) as returned_units,
+                max(orders) as max_orders,
+                count(*) as n_slices
+            from {table}
+            group by metric_date
+        )
+        select
+            t.revenue, t.units, t.returned_units, t.orders,
+            s.revenue, s.units, s.returned_units, s.max_orders, s.n_slices
+        from daily_totals as t
+        inner join slice_sums as s
+            on t.metric_date = s.metric_date
+        """
+    ).fetchall()
+    keys = [
+        *("total_revenue", "total_units", "total_returned", "total_orders"),
+        *("revenue", "units", "returned_units", "max_orders", "n_slices"),
+    ]
+    return [dict(zip(keys, row, strict=True)) for row in found]
 
 
 @pytest.fixture
@@ -211,6 +254,43 @@ def test_orders_are_not_additive_because_an_order_can_span_slices(
     assert slice_sums
     for row in slice_sums:
         assert row["sliced_orders"] >= row["total_orders"]
+
+
+@pytest.mark.parametrize("table", SLICE_TABLES)
+def test_additive_metrics_in_a_slice_table_sum_to_daily_totals(
+    con: duckdb.DuckDBPyConnection, table: str
+) -> None:
+    sums = slice_table_sums(con, table)
+    assert sums
+    for row in sums:
+        assert (row["units"], row["returned_units"]) == (row["total_units"], row["total_returned"])
+        tolerance = 0.005 * row["n_slices"]
+        assert row["revenue"] == pytest.approx(row["total_revenue"], abs=tolerance)
+
+
+@pytest.mark.parametrize("table", SLICE_TABLES)
+def test_no_slice_has_more_orders_than_its_day(con: duckdb.DuckDBPyConnection, table: str) -> None:
+    sums = slice_table_sums(con, table)
+    assert sums
+    for row in sums:
+        assert row["max_orders"] <= row["total_orders"]
+
+
+def test_an_order_with_items_in_two_categories_counts_once_in_each(
+    con: duckdb.DuckDBPyConnection,
+) -> None:
+    build(con, AS_OF.date())
+    expected = expected_orders_by_category()
+    by_category = {
+        (r["metric_date"], r["category"]): r["orders"]
+        for r in rows(con, SLICE_TABLES[0], "orders > 0")
+    }
+    assert by_category == {key: len(orders) for key, orders in expected.items()}
+    categories_by_order: defaultdict[int, set[str]] = defaultdict(set)
+    for (_, category), orders in expected.items():
+        for order in orders:
+            categories_by_order[order].add(category)
+    assert any(len(categories) >= 2 for categories in categories_by_order.values())
 
 
 def test_a_day_without_source_rows_passes_the_quality_checks(gap_report: QualityReport) -> None:
