@@ -10,10 +10,17 @@ from jsonschema import Draft202012Validator
 
 from data_pipeline.paths import PROJECT_ROOT
 
-CONTRACT_VERSION = "v1"
+CONTRACT_VERSION = "v2"
 CONTRACT_ROOT = PROJECT_ROOT / "contract"
 CHECKSUMS_FILE = CONTRACT_ROOT / "checksums.json"
-TABLES = ("daily_metrics", "daily_totals", "metric_definitions", "run_metadata")
+TABLES = (
+    "daily_metrics",
+    "daily_totals",
+    "metric_definitions",
+    "run_metadata",
+    "daily_by_category",
+    "daily_by_distribution_center",
+)
 QUALITY_REPORT = "quality_report"
 
 

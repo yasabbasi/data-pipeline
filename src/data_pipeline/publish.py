@@ -130,6 +130,8 @@ def _validate(
         ("metric_definitions", None),
         ("daily_totals", None),
         ("daily_metrics", DAILY_METRICS_SAMPLE),
+        ("daily_by_category", DAILY_METRICS_SAMPLE),
+        ("daily_by_distribution_center", DAILY_METRICS_SAMPLE),
     ]:
         errors += contract.validate(table, _records(con, table, limit))
     _raise_if_any(errors)

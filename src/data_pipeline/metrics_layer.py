@@ -11,7 +11,14 @@ from data_pipeline.sources.thelook.views import SLICE, load_views
 _GRAINS = {
     "daily_metrics": ("metric_date", *SLICE),
     "daily_totals": ("metric_date",),
+    "daily_by_category": ("metric_date", "category"),
+    "daily_by_distribution_center": (
+        "metric_date",
+        "distribution_center_id",
+        "distribution_center_name",
+    ),
 }
+_SPARSE = ("daily_metrics", "daily_by_category", "daily_by_distribution_center")
 _LINE = "\n            "
 _EVERY_DAY = _LINE.join(
     [
@@ -30,13 +37,14 @@ class MetricsError(Exception):
 def build(
     con: duckdb.DuckDBPyConnection, as_of_date: date, metrics: dict[str, Metric] | None = None
 ) -> tuple[date, date]:
-    """Create daily_metrics, daily_totals and metric_definitions; return the date range."""
+    """Create the daily metric tables and metric_definitions; return the date range."""
     metrics = metrics or load_metrics()
     _check_metrics_match_contract(metrics)
     for name, select in load_views().items():
         con.execute(f"create or replace view {name} as\n{select}")
     first, last = _complete_days(con, as_of_date)
-    con.execute(_metrics_sql("daily_metrics", metrics), {"as_of_date": as_of_date})
+    for table in _SPARSE:
+        con.execute(_metrics_sql(table, metrics), {"as_of_date": as_of_date})
     con.execute(
         _metrics_sql("daily_totals", metrics, grain_rows=_EVERY_DAY),
         {"as_of_date": as_of_date, "first_date": first, "last_date": last},

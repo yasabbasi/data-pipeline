@@ -111,6 +111,14 @@ def test_committed_sample_quality_report_is_up_to_date(
     assert report == json.loads((rebuilt / REPORT_FILE).read_text()), "run `make sample`"
 
 
+def test_the_sample_has_a_readme_for_its_version() -> None:
+    assert f"contract {contract.CONTRACT_VERSION}" in (SAMPLE_DIR / "README.md").read_text()
+
+
+def test_the_sample_run_metadata_has_the_sample_pipeline_version() -> None:
+    assert [r["pipeline_version"] for r in records("run_metadata")] == ["2.0.0"]
+
+
 def test_every_sample_version_is_pinned() -> None:
     assert set(PINNED) == {p.name for p in SAMPLES.iterdir() if p.is_dir()}
 

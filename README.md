@@ -21,10 +21,10 @@ flowchart LR
 |---|---|---|
 | Live run on 2026-11-16 | 2,858,962 rows read from six tables, 281 MB processed in BigQuery, 349 seconds | `make run` |
 | Quality checks on that run | 47 of 47 pass, 0 rows quarantined | `data/output/quality_report.json` |
-| Published by that run | 2,875 days, 2019-01-02 to 2026-11-15; 375,908 rows in `daily_metrics` | printed by `make run` |
-| Tests | 218, all offline on synthetic fixtures | `uv run pytest -q` |
+| Published by that run (contract v1) | 2,875 days, 2019-01-02 to 2026-11-15; 375,908 rows in `daily_metrics` | printed by `make run` |
+| Tests | 284, all offline on synthetic fixtures | `uv run pytest -q` |
 | Demo | Two runs that end with 3,321 source rows and 30 days of metrics, in about 1 second | `make demo` |
-| Rows in `samples/v1` | 338 in `daily_metrics`, 30 in `daily_totals`, 9 in `metric_definitions`, 1 in `run_metadata` | printed by `make sample` |
+| Rows in `samples/v2` | 338 in `daily_metrics`, 30 in `daily_totals`, 120 in `daily_by_category`, 90 in `daily_by_distribution_center`, 9 in `metric_definitions`, 1 in `run_metadata` | printed by `make sample` |
 
 The live numbers are from one run. The source regenerates its data every day, so a run on
 another day reads different rows. The test, demo and sample numbers come from the synthetic
@@ -85,14 +85,14 @@ to `data/output/` (or `$DATA_OUTPUT_DIR`) and prints the latest days.
 - **Metrics layer:** nine metrics defined in [metrics.yaml](metrics.yaml), computed over two
   SQL views in [sql/views/](sql/views/), for complete UTC days only.
 - **Publish:** the outputs are validated against the JSON Schemas in
-  [contract/v1/](contract/v1/), written to a temporary directory, then moved into place.
-- **Contract:** [docs/contract.md](docs/contract.md) states every table, grain, column and
-  metric definition. Any change to them is a new version.
+  [contract/v2/](contract/v2/), written to a temporary directory, then moved into place.
+- **Contract:** the pipeline publishes v2. [docs/contract.md](docs/contract.md) states
+  every table, grain, column and metric definition. Any change to them is a new version.
 - **Source:** [docs/source-profile.md](docs/source-profile.md) records what the live data
   looks like and what the pipeline does about it.
 - **Consumers:** [mcp-server](https://github.com/yasabbasi/mcp-server) and
   [task-agent](https://github.com/yasabbasi/task-agent) read the outputs. mcp-server tests
-  against a copy of [samples/v1/](samples/v1/).
+  against a copy of [samples/v2/](samples/v2/).
 
 ## Limitations
 
@@ -111,11 +111,11 @@ to `data/output/` (or `$DATA_OUTPUT_DIR`) and prints the latest days.
 
 - `make check` runs the linters and the tests. CI runs the same command.
 - `make format` fixes style and formatting.
-- `make sample` rebuilds `samples/v1/` from the fixtures. A test fails when it is out of date.
+- `make sample` rebuilds `samples/v2/` from the fixtures. A test fails when it is out of date.
 - A published contract version is frozen. `contract/checksums.json` pins the SHA-256 of
   each version's schema files and `samples/checksums.json` pins its sample files. A test
-  fails if they change. A change to the outputs goes in a new directory, `contract/v2/`,
-  with its own checksums and `samples/v2/`.
+  fails if they change. A change to the outputs goes in a new directory, `contract/v3/`,
+  with its own checksums and `samples/v3/`.
 
 ## License
 
