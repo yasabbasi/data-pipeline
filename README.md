@@ -88,6 +88,12 @@ to `data/output/` (or `$DATA_OUTPUT_DIR`) and prints the latest days.
   [contract/v2/](contract/v2/), written to a temporary directory, then moved into place.
 - **Contract:** the pipeline publishes v2. [docs/contract.md](docs/contract.md) states
   every table, grain, column and metric definition. Any change to them is a new version.
+- **Contract v2 history:** v2 added `daily_by_category` and `daily_by_distribution_center`
+  after Claude, asked through [mcp-server](https://github.com/yasabbasi/mcp-server) for
+  orders by category, had to refuse. Two agent pull requests defined
+  ([#5](https://github.com/yasabbasi/data-pipeline/pull/5)) and published
+  ([#7](https://github.com/yasabbasi/data-pipeline/pull/7)) it on 2026-11-16.
+  [task-agent](https://github.com/yasabbasi/task-agent) tells the whole story.
 - **Source:** [docs/source-profile.md](docs/source-profile.md) records what the live data
   looks like and what the pipeline does about it.
 - **Consumers:** [mcp-server](https://github.com/yasabbasi/mcp-server) and
