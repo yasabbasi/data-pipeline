@@ -18,3 +18,17 @@ def test_readme_only_names_make_targets_that_exist() -> None:
     targets = set(re.findall(r"^([a-z-]+):", (ROOT / "Makefile").read_text(), flags=re.M))
     named = set(re.findall(r"`make ([a-z-]+)", (ROOT / "README.md").read_text()))
     assert named <= targets
+
+
+def test_readme_says_how_contract_v2_came_about() -> None:
+    readme = (ROOT / "README.md").read_text()
+    how_it_works = readme.split("## How it works")[1].split("\n## ")[0]
+    history = how_it_works.split("- **Contract v2 history:**")[1].split("\n- **")[0]
+    assert len(history.strip().splitlines()) <= 6
+    for link in (
+        "https://github.com/yasabbasi/data-pipeline/pull/5",
+        "https://github.com/yasabbasi/data-pipeline/pull/7",
+        "https://github.com/yasabbasi/task-agent",
+        "https://github.com/yasabbasi/mcp-server",
+    ):
+        assert link in history
