@@ -25,9 +25,11 @@ class FakeClient:
         self.result_table = result
         self.rows = rows or []
         self.calls: list[tuple[str, list[bigquery.ScalarQueryParameter]]] = []
+        self.job_configs: list[bigquery.QueryJobConfig] = []
 
     def query(self, sql: str, job_config: bigquery.QueryJobConfig) -> Self:
         self.calls.append((sql, job_config.query_parameters))
+        self.job_configs.append(job_config)
         return self
 
     def result(self) -> Self:
@@ -113,6 +115,33 @@ def test_bigquery_reader_adds_up_the_bytes_of_its_queries(history_client: FakeCl
     reader = reader_for(history_client)
     reader.history(SOURCE_TABLES["orders"], START, END)
     assert (reader.bytes_processed, reader.bytes_billed) == (1_500_000, 10_485_760)
+
+
+def test_bigquery_queries_bill_at_most_a_billion_bytes_by_default(
+    users_client: FakeClient, history_client: FakeClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("BQ_MAX_BYTES_BILLED", raising=False)
+    reader_for(users_client).read(SOURCE_TABLES["users"], START, END)
+    reader_for(history_client).history(SOURCE_TABLES["orders"], START, END)
+    configs = users_client.job_configs + history_client.job_configs
+    assert [c.maximum_bytes_billed for c in configs] == [1_000_000_000, 1_000_000_000]
+
+
+def test_bigquery_byte_limit_comes_from_the_environment(
+    history_client: FakeClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("BQ_MAX_BYTES_BILLED", "500000000")
+    reader_for(history_client).history(SOURCE_TABLES["orders"], START, END)
+    assert history_client.job_configs[0].maximum_bytes_billed == 500_000_000
+
+
+@pytest.mark.parametrize("value", ["0", "-5", "1e9", "1.5", "lots"])
+def test_a_bad_bigquery_byte_limit_stops_the_run_naming_the_variable(
+    value: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("BQ_MAX_BYTES_BILLED", value)
+    with pytest.raises(SystemExit, match="BQ_MAX_BYTES_BILLED"):
+        reader_for(FakeClient())
 
 
 def test_bigquery_reader_returns_the_source_schema_with_naive_utc_timestamps(

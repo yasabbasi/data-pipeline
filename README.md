@@ -74,7 +74,8 @@ make run
 ```
 
 `make run` reads `bigquery-public-data.thelook_ecommerce` read-only, checks it, publishes
-to `data/output/` (or `$DATA_OUTPUT_DIR`) and prints the latest days.
+to `data/output/` (or `$DATA_OUTPUT_DIR`) and prints the latest days. Each query may bill
+at most 1,000,000,000 bytes, or `$BQ_MAX_BYTES_BILLED`; a query over the limit fails.
 
 ## How it works
 
