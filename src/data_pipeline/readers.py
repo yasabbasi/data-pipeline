@@ -17,6 +17,7 @@ ARROW_TYPES = {
     "FLOAT64": pa.float64(),
     "TIMESTAMP": pa.timestamp("us"),  # UTC, no time zone
 }
+DEFAULT_MAX_BYTES_BILLED = 1_000_000_000  # a whole live run processed 281 MB on 2026-11-16
 
 
 def arrow_schema(table: SourceTable) -> pa.Schema:
@@ -71,6 +72,7 @@ class BigQueryReader:
     name = "bigquery"
 
     def __init__(self, client: bigquery.Client | None = None) -> None:
+        self._max_bytes_billed = _max_bytes_billed()
         self._client = client or bigquery.Client(project=os.environ.get("GCP_PROJECT"))
         self.bytes_processed = 0  # summed over this reader's queries, for cost notes
         self.bytes_billed = 0
@@ -93,7 +95,10 @@ class BigQueryReader:
         return row["n"], row["key_sum"]
 
     def _query(self, sql: str, params: list[bigquery.ScalarQueryParameter]) -> RowIterator:
-        job = self._client.query(sql, job_config=bigquery.QueryJobConfig(query_parameters=params))
+        config = bigquery.QueryJobConfig(
+            query_parameters=params, maximum_bytes_billed=self._max_bytes_billed
+        )
+        job = self._client.query(sql, job_config=config)
         rows = job.result()  # waits for the job, which fills in its byte statistics
         self.bytes_processed += job.total_bytes_processed or 0
         self.bytes_billed += job.total_bytes_billed or 0
@@ -113,6 +118,13 @@ def build_query(
         conditions.insert(0, f"{table.watermark} >= @start")
         params.insert(0, bigquery.ScalarQueryParameter("start", "TIMESTAMP", start))
     return f"{sql}\nwhere {' and '.join(conditions)}", params
+
+
+def _max_bytes_billed() -> int:
+    raw = os.environ.get("BQ_MAX_BYTES_BILLED") or str(DEFAULT_MAX_BYTES_BILLED)
+    if not raw.isdecimal() or int(raw) <= 0:
+        raise SystemExit(f"error: BQ_MAX_BYTES_BILLED must be a positive whole number, not {raw!r}")
+    return int(raw)
 
 
 def _watermark(table: SourceTable) -> str:
